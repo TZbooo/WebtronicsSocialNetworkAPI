@@ -4,7 +4,7 @@ from sqlmodel import Session
 from app.db.models.user import get_user, create_user
 from app.db.schemas.user import UserSchema
 from app.db.session import get_session
-from . import AuthJWT
+from .auth import AuthJWT
 
 
 router = APIRouter(

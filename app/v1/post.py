@@ -5,7 +5,7 @@ from app.db.models.post import get_post_list, get_post, create_post, update_post
 from app.db.models.user import get_user, like_post, remove_like, dislike_post, remove_dislike
 from app.db.schemas.post import PostSchema
 from app.db.session import get_session
-from . import AuthJWT
+from .auth import AuthJWT
 
 
 router = APIRouter(
@@ -50,7 +50,7 @@ async def create_new_post(post: PostSchema, Authorize: AuthJWT = Depends(), db: 
             username=author_username
         )
     )
-    return {'post': create_post.dict()}
+    return {'post': created_post.dict()}
 
 
 @router.patch('/{id}/update')
