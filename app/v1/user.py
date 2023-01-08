@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
 from app.db.models.user import get_user, create_user
@@ -33,7 +33,10 @@ def login(user: UserSchema, Authorize: AuthJWT = Depends(), db: Session = Depend
         db=db,
         username=user.username
     ):
-        return {'error': 'Bad username or password'}
+        raise HTTPException(
+            status_code=400,
+            detail='Bad username or password'
+        )
 
     access_token = Authorize.create_access_token(subject=user.username)
     refresh_token = Authorize.create_refresh_token(subject=user.username)

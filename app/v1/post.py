@@ -1,5 +1,4 @@
-from fastapi import APIRouter, Depends
-from fastapi.encoders import jsonable_encoder
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
 from app.db.models.post import get_post_list, get_post, create_post, update_post
@@ -68,9 +67,15 @@ async def update_post_by_id(id: int, post: PostSchema, Authorize: AuthJWT = Depe
     )
 
     if not post_for_update:
-        return {'error': 'post is not exists'}
+        raise HTTPException(
+            status_code=404,
+            detail='post does not exists'
+        )
     if not post_for_update.user_id == current_user.id:
-        return {'error': 'you\'re not author of this post'}
+        return HTTPException(
+            status_code=304,
+            detail='only the author of the post can change it'
+        )
 
     new_post = update_post(
         db=db,
@@ -88,9 +93,15 @@ async def like_post_by_id(id: int, Authorize: AuthJWT = Depends(), db: Session =
     liker = get_user(db, Authorize.get_jwt_subject())
 
     if not liked_post:
-        return {'error': 'post does not exists'}
+        return HTTPException(
+            status_code=404,
+            detail='post for like does not exists'
+        )
     if liker == liked_post.user:
-        return {'error': 'author cannot like own posts'}
+        return HTTPException(
+            status_code=304,
+            detail='author can not like his posts'
+        )
     if liker in liked_post.likers:
         likes = remove_like(
             db=db,
@@ -115,9 +126,15 @@ async def like_post_by_id(id: int, Authorize: AuthJWT = Depends(), db: Session =
     disliker = get_user(db, Authorize.get_jwt_subject())
 
     if not disliked_post:
-        return {'error': 'post does not exists'}
+        raise HTTPException(
+            status_code=404,
+            detail='post for dislike does not exists'
+        )
     if disliker == disliked_post.user:
-        return {'error': 'author cannot dislike own posts'}
+        raise HTTPException(
+            status_code=304,
+            detail='author can not dislike his posts'
+        )
     if disliker in disliked_post.dislikers:
         dislikes = remove_dislike(
             db=db,
