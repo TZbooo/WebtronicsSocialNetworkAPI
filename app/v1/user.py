@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
-from app.db.models.user import get_user, create_user
+from app.db.models.user import UserModel, get_user, create_user
 from app.db.schemas.user import UserSchema
 from app.db.session import get_session
 from .auth import AuthJWT
@@ -56,11 +56,11 @@ def refresh(Authorize: AuthJWT = Depends()):
 
 
 @router.get('/me')
-def get_current_user(Authorize: AuthJWT = Depends(), db: Session = Depends(get_session)):
+def get_current_user(Authorize: AuthJWT = Depends(), db: Session = Depends(get_session)) -> UserModel:
     Authorize.jwt_required()
 
     current_user = get_user(
         db=db,
         username=Authorize.get_jwt_subject()
     )
-    return {'user': current_user.dict()}
+    return current_user

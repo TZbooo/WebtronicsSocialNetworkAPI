@@ -1,8 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
-from app.db.models.post import get_post_list, get_post, create_post, update_post
-from app.db.models.user import get_user, like_post, remove_like, dislike_post, remove_dislike
+from app.db.models.post import (
+    PostModel,
+    get_post_list,
+    get_post,
+    create_post,
+    update_post
+)
+from app.db.models.user import (
+    get_user,
+    like_post,
+    remove_like,
+    dislike_post,
+    remove_dislike
+)
 from app.db.schemas.post import PostSchema
 from app.db.session import get_session
 from .auth import AuthJWT
@@ -14,31 +26,34 @@ router = APIRouter(
 
 
 @router.get('/all')
-async def get_all_posts(offset: int | None, limit: int | None, db: Session = Depends(get_session)):
+async def get_all_posts(
+    offset: int | None,
+    limit: int | None,
+    db: Session = Depends(get_session)
+) -> list[PostModel]:
     posts = get_post_list(
         db=db,
         offset=offset,
         limit=limit
     )
-    posts = [post.dict() for post in posts]
-    return {'posts': posts}
+    return posts
 
 
 @router.get('/{id}')
-async def get_post_detail(id: int, db: Session = Depends(get_session)):
+async def get_post_detail(id: int, db: Session = Depends(get_session)) -> PostModel:
     post = get_post(
         db=db,
         id=id
     )
-    return {
-        'post': post.dict(),
-        'likes': len(post.likers),
-        'dislikes': len(post.dislikers)
-    }
+    return post
 
 
 @router.post('/create')
-async def create_new_post(post: PostSchema, Authorize: AuthJWT = Depends(), db: Session = Depends(get_session)):
+async def create_new_post(
+    post: PostSchema,
+    Authorize: AuthJWT = Depends(),
+    db: Session = Depends(get_session)
+) -> PostModel:
     Authorize.jwt_required()
 
     author_username = Authorize.get_jwt_subject()
@@ -50,11 +65,16 @@ async def create_new_post(post: PostSchema, Authorize: AuthJWT = Depends(), db: 
             username=author_username
         )
     )
-    return {'post': created_post.dict()}
+    return created_post
 
 
 @router.patch('/{id}/update')
-async def update_post_by_id(id: int, post: PostSchema, Authorize: AuthJWT = Depends(), db: Session = Depends(get_session)):
+async def update_post_by_id(
+    id: int,
+    post: PostSchema,
+    Authorize: AuthJWT = Depends(),
+    db: Session = Depends(get_session)
+) -> PostSchema:
     Authorize.jwt_required()
 
     current_user = get_user(
@@ -82,7 +102,7 @@ async def update_post_by_id(id: int, post: PostSchema, Authorize: AuthJWT = Depe
         content=post.content,
         id=id
     )
-    return {'post': new_post.dict()}
+    return new_post
 
 
 @router.post('/{id}/like')
