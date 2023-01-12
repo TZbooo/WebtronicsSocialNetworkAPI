@@ -1,7 +1,6 @@
 import os
 
-from sqlmodel import create_engine, Session
-from .models import SQLModel
+from sqlmodel import SQLModel, Session, create_engine
 
 
 POSTGRES_USER = os.getenv('POSTGRES_USER')
@@ -12,19 +11,6 @@ POSTGRES_HOST = os.getenv('POSTGRES_HOST')
 DATABASE_URL = f'postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}/{POSTGRES_DB}'
 
 engine = create_engine(DATABASE_URL, echo=True, pool_pre_ping=True)
-
-
-def init_db():
-    SQLModel.metadata.create_all(engine)
-
-
-def wait_for_db():
-    while True:
-        try:
-            engine.connect()
-            break
-        except:
-            pass
 
 
 def get_session():

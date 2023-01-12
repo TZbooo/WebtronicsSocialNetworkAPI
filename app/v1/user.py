@@ -1,10 +1,16 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session
 
-from app.db.models.user import UserModel, get_user, create_user
-from app.db.schemas.user import UserSchema
+from app.db.models.user import (
+    User,
+    get_user_by_username,
+    authenticate_user,
+    get_current_user
+)
+from app.db.schemas.user import UserAuth
 from app.db.session import get_session
-from .auth import AuthJWT
+from app.utils import get_password_hash, create_access_token
 
 
 router = APIRouter(
@@ -13,54 +19,35 @@ router = APIRouter(
 
 
 @router.post('/signup')
-def signup(user: UserSchema, Authorize: AuthJWT = Depends(), db: Session = Depends(get_session)):
-    create_user(
-        db=db,
-        username=user.username,
-        password=user.password
+def signup(data: UserAuth, db: Session = Depends(get_session)):
+    if get_user_by_username(db, data.username) is not None:
+        raise HTTPException(
+            status_code=409,
+            detail='User already exists'
+        )
+    user = User(
+        username=data.username,
+        password=get_password_hash(data.password)
     )
-    access_token = Authorize.create_access_token(subject=user.username)
-    refresh_token = Authorize.create_refresh_token(subject=user.username)
-    return {
-        'access_token': access_token,
-        'refresh_token': refresh_token
-    }
-
+    db.add(user)
+    db.commit()
+    
 
 @router.post('/login')
-def login(user: UserSchema, Authorize: AuthJWT = Depends(), db: Session = Depends(get_session)):
-    if not get_user(
-        db=db,
-        username=user.username
-    ):
+async def login_for_access_token(db: Session = Depends(get_session), form_data: OAuth2PasswordRequestForm = Depends()):
+    user = authenticate_user(db, form_data.username, form_data.password)
+    if not user:
         raise HTTPException(
-            status_code=400,
-            detail='Bad username or password'
+            status_code=401,
+            detail='Incorrect username or password',
+            headers={'WWW-Authenticate': 'Bearer'},
         )
-
-    access_token = Authorize.create_access_token(subject=user.username)
-    refresh_token = Authorize.create_refresh_token(subject=user.username)
-    return {
-        'access_token': access_token,
-        'refresh_token': refresh_token
-    }
-
-
-@router.post('/refresh')
-def refresh(Authorize: AuthJWT = Depends()):
-    Authorize.jwt_refresh_token_required()
-
-    current_user = Authorize.get_jwt_subject()
-    new_access_token = Authorize.create_access_token(subject=current_user)
-    return {'access_token': new_access_token}
+    access_token = create_access_token(
+        data={'sub': user.username}
+    )
+    return {'access_token': access_token, 'token_type': 'bearer'}
 
 
 @router.get('/me')
-def get_current_user(Authorize: AuthJWT = Depends(), db: Session = Depends(get_session)) -> UserModel:
-    Authorize.jwt_required()
-
-    current_user = get_user(
-        db=db,
-        username=Authorize.get_jwt_subject()
-    )
+def get_current_user(current_user: User = Depends(get_current_user)) -> User:
     return current_user
